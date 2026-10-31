@@ -1,0 +1,38 @@
+{
+  "company": {
+    "name": "Taiba Garments",
+    "tagline": "Best Designer Suits & Stitched Clothing",
+    "phone": "+92 300 1234567",
+    "email": "support@taibagarments.com",
+    "address": "Main Bazar, Pakistan",
+    "whatsapp": "923001234567"
+  },
+  "home": {
+    "meta_title": "Taiba Garments | Best Designer Suits & Stitched Clothing",
+    "meta_desc": "Shop premium stitched and unstitched garments at Taiba Garments.",
+    "hero_title": "Discover Elegance & Style",
+    "hero_subtitle": "Explore our exclusive collection of fine garments designed for absolute comfort and trend.",
+    "cta_text": "View Collection",
+    "services_heading": "Our Featured Products & Services",
+    "footer_text": "© 2026 Taiba Garments. All rights reserved."
+  },
+  "about": {
+    "meta_title": "About Us | Taiba Garments Heritage & Quality",
+    "meta_desc": "Learn more about Taiba Garments and our quality craftsmanship.",
+    "heading": "Welcome to Taiba Garments",
+    "body": "We take pride in bringing you the finest apparel, combining traditional craftsmanship with modern fashion trends."
+  },
+  "contact": {
+    "meta_title": "Contact Us | Taiba Garments Customer Support",
+    "meta_desc": "Get in touch with Taiba Garments for orders and queries.",
+    "heading": "Get In Touch",
+    "subheading": "We would love to hear from you. Reach out to our support team anytime."
+  },
+  "privacy": {
+    "meta_title": "Privacy Policy | Taiba Garments",
+    "meta_desc": "Read the privacy policy of Taiba Garments.",
+    "heading": "Privacy Policy",
+    "last_updated": "October 2026",
+    "body": "At Taiba Garments, we respect your privacy and ensure that your personal information is securely handled."
+  }
+}
