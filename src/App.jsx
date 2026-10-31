@@ -4,32 +4,39 @@ import Footer from './components/Footer';
 import Home from './pages/Home';
 
 export default function App() {
-    const [company, setCompany] = useState({});
-    const [pagesContent, setPagesContent] = useState({});
+    const [data, setData] = useState(null);
     const [currentPage, setCurrentPage] = useState('home');
     const [darkMode, setDarkMode] = useState(false);
 
     useEffect(() => {
-        fetch('./company.json')
-            .then(res => res.json())
-            .then(setCompany)
-            .catch(err => console.error("Error fetching company.json:", err));
-
+        // Sirf aik file fetch hogi jo company aur pages dono ka data rakhegi
         fetch('./pages-content.json')
-            .then(res => res.json())
-            .then(setPagesContent)
-            .catch(err => console.error("Error fetching pages-content.json:", err));
+            .then(res => {
+                if (!res.ok) throw new Error('Failed to load pages-content.json');
+                return res.json();
+            })
+            .then(setData)
+            .catch(err => console.error("Error fetching content:", err));
     }, []);
 
     useEffect(() => {
+        if (!data) return;
         const titleMap = {
-            home: pagesContent.home?.meta_title || 'Taiba Garments',
-            about: pagesContent.about?.meta_title || 'About Us - Taiba Garments',
-            contact: pagesContent.contact?.meta_title || 'Contact Us - Taiba Garments',
-            privacy: pagesContent.privacy?.meta_title || 'Privacy Policy - Taiba Garments'
+            home: data.home?.meta_title || 'Taiba Garments',
+            about: data.about?.meta_title || 'About Us - Taiba Garments',
+            contact: data.contact?.meta_title || 'Contact Us - Taiba Garments',
+            privacy: data.privacy?.meta_title || 'Privacy Policy - Taiba Garments'
         };
         document.title = titleMap[currentPage] || 'Taiba Garments';
-    }, [currentPage, pagesContent]);
+    }, [currentPage, data]);
+
+    // Jab tak data load ho raha hai
+    if (!data) {
+        return <div className="loading-screen" style={{ textAlign: 'center', padding: '50px' }}>Loading...</div>;
+    }
+
+    const company = data.company || {};
+    const pagesContent = data;
 
     return (
         <div className={`app-container ${darkMode ? 'dark-theme' : 'light-theme'}`}>

@@ -1,4 +1,12 @@
 {
+  "company": {
+    "name": "Taiba Garments",
+    "tagline": "Best Designer Suits & Stitched Clothing",
+    "phone": "+92 300 1234567",
+    "email": "support@taibagarments.com",
+    "address": "Main Bazar, Pakistan",
+    "whatsapp": "923001234567"
+  },
   "home": {
     "meta_title": "Taiba Garments | Best Designer Suits & Stitched Clothing",
     "meta_desc": "Shop premium stitched and unstitched garments at Taiba Garments.",

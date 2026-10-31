@@ -1,20 +1,16 @@
-# Taiba Garments - React Web Application
+# React + Vite
 
-Yeh project Vite + React par tayar kiya gaya hai.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## Run Kaise Karein:
+Currently, two official plugins are available:
 
-1. System mein **Node.js** installed hona chahiye.
-2. Terminal / Command Prompt mein project folder kholein.
-3. Dependencies install karein:
-   ```bash
-   npm install
-   ```
-4. Development server start karein:
-   ```bash
-   npm run dev
-   ```
-5. Production Build banane ke liye:
-   ```bash
-   npm run build
-   ```
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+
+## React Compiler
+
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
