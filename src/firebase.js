@@ -1,4 +1,5 @@
 import { initializeApp } from "firebase/app";
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -11,4 +12,23 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+
+// App Check (reCAPTCHA Enterprise / Fraud Defense): Firestore ko sirf aap ki asli website se requests milengi.
+// Ye getFirestore() se PEHLE initialize hona chahiye.
+const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+
+if (siteKey) {
+  // Sirf local development mein debug token (production build mein nahi chalta)
+  if (import.meta.env.DEV) {
+    self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+  }
+
+  initializeAppCheck(app, {
+    provider: new ReCaptchaEnterpriseProvider(siteKey),
+    isTokenAutoRefreshEnabled: true,
+  });
+} else {
+  console.warn("VITE_RECAPTCHA_SITE_KEY set nahi hai: App Check disabled.");
+}
+
 export const db = getFirestore(app);

@@ -1,7 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { collection, getDocs, query, orderBy, limit, startAfter, endBefore, limitToLast } from 'firebase/firestore';
-import { db } from '../firebase'; // Apne firebase setup ka path check kar lein
+import React, { useState, useEffect, useRef } from 'react';
+import { collection, getDocs, query, orderBy, limit, startAfter } from 'firebase/firestore';
+import { db } from '../firebase';
 import ProductModal from '../components/ProductModal';
+
+// Sort option -> Firestore orderBy
+const SORTS = {
+    'default': ['createdAt', 'desc'],
+    'price-low': ['price', 'asc'],
+    'price-high': ['price', 'desc'],
+    'name-asc': ['name', 'asc'],
+};
 
 export default function Home({ content }) {
     const [products, setProducts] = useState([]);
@@ -9,126 +17,68 @@ export default function Home({ content }) {
     const [sortOrder, setSortOrder] = useState('default');
     const [itemsPerPage, setItemsPerPage] = useState(10);
     const [currentPage, setCurrentPage] = useState(1);
-    const [lastVisible, setLastVisible] = useState(null);
-    const [firstVisible, setFirstVisible] = useState(null);
+    const [hasNext, setHasNext] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState(null);
 
-    // Initial Data Fetch & Items Per Page / Sort Change handler
-    useEffect(() => {
-        fetchFirstPage();
-    }, [itemsPerPage, sortOrder]);
+    // Har page ek baar fetch hota hai, phir yahin cache rehta hai.
+    // Previous dabane par Firestore se koi read nahi hoti.
+    // Shape: { [pageNumber]: { items, lastDoc, hasNext } }
+    const pageCache = useRef({});
+    const requestId = useRef(0);
 
-    const fetchFirstPage = async () => {
+    const fetchPage = async (page) => {
+        const cached = pageCache.current[page];
+        if (cached) {
+            setProducts(cached.items);
+            setHasNext(cached.hasNext);
+            setCurrentPage(page);
+            return;
+        }
+
+        const myRequest = ++requestId.current;
         setLoading(true);
         try {
-            let q = collection(db, 'products');
+            const [field, dir] = SORTS[sortOrder];
+            const constraints = [orderBy(field, dir)];
 
-            // Sorting logic based on Firestore fields
-            if (sortOrder === 'price-low') {
-                q = query(collection(db, 'products'), orderBy('price', 'asc'), limit(itemsPerPage));
-            } else if (sortOrder === 'price-high') {
-                q = query(collection(db, 'products'), orderBy('price', 'desc'), limit(itemsPerPage));
-            } else if (sortOrder === 'name-asc') {
-                q = query(collection(db, 'products'), orderBy('name', 'asc'), limit(itemsPerPage));
-            } else {
-                // Default sorting by creation date
-                q = query(collection(db, 'products'), orderBy('createdAt', 'desc'), limit(itemsPerPage));
+            if (page > 1) {
+                const prev = pageCache.current[page - 1];
+                if (!prev?.lastDoc) return;
+                constraints.push(startAfter(prev.lastDoc));
             }
+            // Ek extra doc mangwa kar pata chalta hai ke agla page maujood hai ya nahi
+            constraints.push(limit(itemsPerPage + 1));
 
-            const snapshot = await getDocs(q);
-            const productList = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
+            const snapshot = await getDocs(query(collection(db, 'products'), ...constraints));
+            if (myRequest !== requestId.current) return; // purani request, ignore
 
-            setProducts(productList);
-            setFirstVisible(snapshot.docs[0] || null);
-            setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
-            setCurrentPage(1);
+            const hasMore = snapshot.docs.length > itemsPerPage;
+            const pageDocs = hasMore ? snapshot.docs.slice(0, itemsPerPage) : snapshot.docs;
+            const items = pageDocs.map(d => ({ id: d.id, ...d.data() }));
+
+            pageCache.current[page] = {
+                items,
+                lastDoc: pageDocs[pageDocs.length - 1] || null,
+                hasNext: hasMore,
+            };
+
+            setProducts(items);
+            setHasNext(hasMore);
+            setCurrentPage(page);
+            if (page > 1) window.scrollTo({ top: 450, behavior: 'smooth' });
         } catch (err) {
             console.error("Error fetching products from Firestore:", err);
         } finally {
-            setLoading(false);
+            if (myRequest === requestId.current) setLoading(false);
         }
     };
 
-    // Handler for Next Page (Database Side Paging)
-    const handleNextPage = async () => {
-        if (!lastVisible) return;
-        setLoading(true);
-        try {
-            let q = query(
-                collection(db, 'products'),
-                orderBy('createdAt', 'desc'),
-                startAfter(lastVisible),
-                limit(itemsPerPage)
-            );
-
-            if (sortOrder === 'price-low') {
-                q = query(collection(db, 'products'), orderBy('price', 'asc'), startAfter(lastVisible), limit(itemsPerPage));
-            } else if (sortOrder === 'price-high') {
-                q = query(collection(db, 'products'), orderBy('price', 'desc'), startAfter(lastVisible), limit(itemsPerPage));
-            } else if (sortOrder === 'name-asc') {
-                q = query(collection(db, 'products'), orderBy('name', 'asc'), startAfter(lastVisible), limit(itemsPerPage));
-            }
-
-            const snapshot = await getDocs(q);
-            if (!snapshot.empty) {
-                const productList = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-                setProducts(productList);
-                setFirstVisible(snapshot.docs[0]);
-                setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
-                setCurrentPage(prev => prev + 1);
-                window.scrollTo({ top: 450, behavior: 'smooth' });
-            }
-        } catch (err) {
-            console.error("Error fetching next page:", err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Handler for Previous Page
-    const handlePrevPage = async () => {
-        if (currentPage <= 1 || !firstVisible) return;
-        setLoading(true);
-        try {
-            let q = query(
-                collection(db, 'products'),
-                orderBy('createdAt', 'desc'),
-                endBefore(firstVisible),
-                limitToLast(itemsPerPage)
-            );
-
-            if (sortOrder === 'price-low') {
-                q = query(collection(db, 'products'), orderBy('price', 'asc'), endBefore(firstVisible), limitToLast(itemsPerPage));
-            } else if (sortOrder === 'price-high') {
-                q = query(collection(db, 'products'), orderBy('price', 'desc'), endBefore(firstVisible), limitToLast(itemsPerPage));
-            } else if (sortOrder === 'name-asc') {
-                q = query(collection(db, 'products'), orderBy('name', 'asc'), endBefore(firstVisible), limitToLast(itemsPerPage));
-            }
-
-            const snapshot = await getDocs(q);
-            if (!snapshot.empty) {
-                const productList = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-                setProducts(productList);
-                setFirstVisible(snapshot.docs[0]);
-                setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
-                setCurrentPage(prev => prev - 1);
-                window.scrollTo({ top: 450, behavior: 'smooth' });
-            }
-        } catch (err) {
-            console.error("Error fetching previous page:", err);
-        } finally {
-            setLoading(false);
-        }
-    };
+    // Sort ya items-per-page badle to cache reset karke page 1 dobara lao
+    useEffect(() => {
+        pageCache.current = {};
+        fetchPage(1);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [itemsPerPage, sortOrder]);
 
     return (
         <div>
@@ -143,11 +93,11 @@ export default function Home({ content }) {
             <section id="products" className="section">
                 <div className="container">
                     <h2 className="section-title">{content?.services_heading || 'Our Collections'}</h2>
-                    
+
                     <div className="controls-bar">
                         <div className="control-group">
                             <label>Sort By:</label>
-                            <select onChange={(e) => setSortOrder(e.target.value)}>
+                            <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
                                 <option value="default">Default</option>
                                 <option value="price-low">Price: Low to High</option>
                                 <option value="price-high">Price: High to Low</option>
@@ -175,16 +125,16 @@ export default function Home({ content }) {
                                 products.map((item) => {
                                     // Database URL ke extra quotes remove karne ke liye cleaning logic
                                     let rawImg = item.images?.[0] || item.product_img || '';
-                                    let cardImgUrl = typeof rawImg === 'string' 
-                                        ? rawImg.replace(/^["']+|["']+$/g, '').trim() 
+                                    let cardImgUrl = typeof rawImg === 'string'
+                                        ? rawImg.replace(/^["']+|["']+$/g, '').trim()
                                         : 'placeholder.jpg';
 
                                     return (
                                         <div key={item.id} className="service-card" onClick={() => setSelectedProduct(item)} style={{ cursor: 'pointer' }}>
-                                            <img 
-                                                src={cardImgUrl} 
-                                                alt={item.name || item.title} 
-                                                className="service-img" 
+                                            <img
+                                                src={cardImgUrl}
+                                                alt={item.name || item.title}
+                                                className="service-img"
                                             />
                                             <div className="service-info">
                                                 <h3>{item.name || item.title}</h3>
@@ -198,20 +148,19 @@ export default function Home({ content }) {
                         </div>
                     )}
 
-                    {/* Database Pagination Next / Prev Controls */}
                     <div className="pagination-container" style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '20px' }}>
-                        <button 
-                            className="page-btn" 
-                            onClick={handlePrevPage} 
+                        <button
+                            className="page-btn"
+                            onClick={() => fetchPage(currentPage - 1)}
                             disabled={currentPage === 1 || loading}
                         >
                             Previous
                         </button>
                         <span style={{ alignSelf: 'center', fontWeight: 'bold' }}>Page {currentPage}</span>
-                        <button 
-                            className="page-btn" 
-                            onClick={handleNextPage} 
-                            disabled={products.length < itemsPerPage || loading}
+                        <button
+                            className="page-btn"
+                            onClick={() => fetchPage(currentPage + 1)}
+                            disabled={!hasNext || loading}
                         >
                             Next
                         </button>
@@ -220,9 +169,9 @@ export default function Home({ content }) {
             </section>
 
             {selectedProduct && (
-                <ProductModal 
-                    product={selectedProduct} 
-                    onClose={() => setSelectedProduct(null)} 
+                <ProductModal
+                    product={selectedProduct}
+                    onClose={() => setSelectedProduct(null)}
                 />
             )}
         </div>
